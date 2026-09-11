@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Лётная книжка</title>
+    <!-- Подключаем Tailwind CSS для современного дизайна -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Chart.js для графиков динамики налёта -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.0/chart.umd.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Manrope', sans-serif;
+            background-color: #0b1329;
+            background-image:
+                radial-gradient(ellipse 900px 500px at 15% -10%, rgba(37,99,235,0.10), transparent 60%),
+                radial-gradient(ellipse 700px 500px at 100% 10%, rgba(212,175,106,0.05), transparent 55%);
+            color: #f8fafc;
+        }
+        .font-mono {
+            font-family: 'IBM Plex Mono', ui-monospace, monospace !important;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.01em;
+        }
+        /* Кастомный скроллбар для горизонтальной таблицы */
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        /* Премиальные карточки: мягкий подъём и свечение при наведении */
+        .panel {
+            transition: transform .28s cubic-bezier(.22,1,.36,1), box-shadow .28s ease, border-color .28s ease;
+        }
+        .panel:hover {
+            transform: translateY(-3px);
+            border-color: rgba(96,165,250,0.35);
+            box-shadow: 0 24px 48px -20px rgba(0,0,0,0.55), 0 0 0 1px rgba(96,165,250,0.08);
+        }
+
+        /* Мягкая нажимная отдача у кнопок */
+        .btn-tactile {
+            transition: transform .15s ease, box-shadow .15s ease, background-color .2s ease, border-color .2s ease;
+        }
+        .btn-tactile:active {
+            transform: scale(0.96);
+        }
+
+        /* Сегментированный переключатель (Время суток / Вид упражнения) */
+        .segmented {
+            position: relative;
+            display: grid;
+            background: #020617;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 3px;
+            overflow: hidden;
+        }
+        .segmented-thumb {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            height: calc(100% - 6px);
+            border-radius: 8px;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            box-shadow: 0 4px 14px -4px rgba(37,99,235,0.6);
+            transition: transform .32s cubic-bezier(.22,1,.36,1), background .25s ease;
+            z-index: 0;
+        }
+        .segmented label {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 4px;
+            font-size: 12.5px;
+            font-weight: 600;
+            line-height: 1;
+            color: #64748b;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: color .25s ease;
+        }
+        .segmented input { position: absolute; opacity: 0; pointer-events: none; }
+        .segmented label.seg-active { color: #ffffff; }
+        .segmented--theme label {
+            padding: 0;
+            font-size: 16px;
+        }
+
+        /* Плавное появление новой строки в таблице */
+        @keyframes rowIn {
+            from { opacity: 0; transform: translateY(-4px); background-color: rgba(96,165,250,0.12); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .row-in { animation: rowIn .5s cubic-bezier(.22,1,.36,1); }
+
+        /* Число, готовое к плавной анимации счёта */
+        .counter { font-variant-numeric: tabular-nums; }
+
+        /* Экран загрузки при первом входе */
+        #appLoader {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: #0b1329;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            transition: opacity .6s ease, visibility .6s ease;
+        }
+        #appLoader.loader-hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .loader-ring {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: 2px solid rgba(96,165,250,0.15);
+            border-top-color: #60a5fa;
+            animation: loaderSpin 1s linear infinite;
+            position: relative;
+        }
+        .loader-ring::after {
+            content: '';
+            position: absolute;
+            inset: 10px;
+            border-radius: 50%;
+            border: 1px solid rgba(212,175,106,0.25);
+            border-bottom-color: #d4af6a;
+            animation: loaderSpin 1.6s linear infinite reverse;
+        }
+        @keyframes loaderSpin { to { transform: rotate(360deg); } }
+        .loader-title {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 700;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            font-size: 12.5px;
+            color: #94a3b8;
+            opacity: 0;
+            animation: loaderFadeIn .8s ease .3s forwards;
+        }
+        @keyframes loaderFadeIn { to { opacity: 1; } }
+
+        /* Плавное появление основных блоков интерфейса */
+        .reveal {
+            opacity: 0;
+            transform: translateY(14px);
+            animation: revealIn .7s cubic-bezier(.22,1,.36,1) forwards;
+        }
+        @keyframes revealIn { to { opacity: 1; transform: translateY(0); } }
+        /* Строка журнала: жест "смахнуть, чтобы удалить" */
+        .swipeable-row {
+            touch-action: pan-y;
+            position: relative;
+        }
+
+        /* ================= МОБИЛЬНАЯ АДАПТАЦИЯ ================= */
+        @media (max-width: 640px) {
+            #chartWrap { height: 240px !important; }
+            #toast {
+                left: 12px !important;
+                right: 12px !important;
+                bottom: 12px !important;
+                width: auto !important;
+                justify-content: center;
+            }
+            .panel:hover {
+                transform: none;
+            }
+            h1.text-xl { font-size: 1.05rem; }
+            .segmented--theme { width: 76px !important; height: 30px !important; }
+            .segmented--theme label { font-size: 14px !important; }
+        }
+
+        /* ================= СВЕТЛАЯ ТЕМА ================= */
+        html[data-theme="light"] body {
+            background-color: #f1f5f9 !important;
+            background-image:
+                radial-gradient(ellipse 900px 500px at 15% -10%, rgba(37,99,235,0.06), transparent 60%),
+                radial-gradient(ellipse 700px 500px at 100% 10%, rgba(212,175,106,0.08), transparent 55%) !important;
+            color: #0f172a !important;
+        }
+        html[data-theme="light"] #appLoader { background-color: #f1f5f9 !important; }
+        html[data-theme="light"] .loader-title { color: #64748b !important; }
+
+        html[data-theme="light"] .custom-scrollbar::-webkit-scrollbar-track { background: #e2e8f0 !important; }
+        html[data-theme="light"] .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8 !important; }
+        html[data-theme="light"] .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b !important; }
+
+        html[data-theme="light"] .segmented { background: #eef2f7 !important; border-color: #e2e8f0 !important; }
+        html[data-theme="light"] .segmented label { color: #64748b !important; }
+        html[data-theme="light"] .segmented label.seg-active { color: #ffffff !important; }
+
+        /* Поверхности */
+        html[data-theme="light"] .bg-slate-900 { background-color: #ffffff !important; }
+        html[data-theme="light"] .bg-slate-900\/60 { background-color: rgba(255,255,255,0.85) !important; }
+        html[data-theme="light"] .bg-slate-900\/80 { background-color: rgba(255,255,255,0.85) !important; }
+        html[data-theme="light"] .bg-slate-950 { background-color: #f8fafc !important; }
+        html[data-theme="light"] .bg-slate-950\/20 { background-color: rgba(241,245,249,0.5) !important; }
+        html[data-theme="light"] .bg-slate-950\/30 { background-color: rgba(241,245,249,0.65) !important; }
+        html[data-theme="light"] .bg-slate-950\/40 { background-color: rgba(241,245,249,0.8) !important; }
+        html[data-theme="light"] .bg-slate-950\/90 { background-color: rgba(248,250,252,0.96) !important; }
+        html[data-theme="light"] .bg-slate-800 { background-color: #e2e8f0 !important; }
+        html[data-theme="light"] .bg-slate-800\/40 { background-color: rgba(226,232,240,0.6) !important; }
+        html[data-theme="light"] .hover\:bg-slate-700:hover { background-color: #cbd5e1 !important; }
+        html[data-theme="light"] .hover\:bg-slate-800\/40:hover { background-color: rgba(226,232,240,0.7) !important; }
+        html[data-theme="light"] .bg-gradient-to-br.from-slate-900.to-slate-950 {
+            background-image: linear-gradient(to bottom right, #ffffff, #f8fafc) !important;
+        }
+
+        /* Опасные действия (сброс/удаление) */
+        html[data-theme="light"] .bg-red-950\/40 { background-color: #fee2e2 !important; }
+        html[data-theme="light"] .hover\:bg-red-900\/60:hover { background-color: #fecaca !important; }
+        html[data-theme="light"] .border-red-900\/50 { border-color: #fca5a5 !important; }
+
+        /* Границы */
+        html[data-theme="light"] .border-slate-700 { border-color: #cbd5e1 !important; }
+        html[data-theme="light"] .hover\:border-slate-700:hover { border-color: #cbd5e1 !important; }
+        html[data-theme="light"] .border-slate-800 { border-color: #e2e8f0 !important; }
+        html[data-theme="light"] .border-slate-800\/40 { border-color: rgba(226,232,240,0.7) !important; }
+        html[data-theme="light"] .border-slate-800\/60 { border-color: rgba(226,232,240,0.85) !important; }
+        html[data-theme="light"] .border-slate-800\/80 { border-color: rgba(226,232,240,0.95) !important; }
+        html[data-theme="light"] .divide-slate-800\/40 > :not([hidden]) ~ :not([hidden]) { border-color: #e2e8f0 !important; }
+
+        /* Текст */
+        html[data-theme="light"] .text-white { color: #0f172a !important; }
+        html[data-theme="light"] .text-slate-200 { color: #334155 !important; }
+        html[data-theme="light"] .text-slate-300 { color: #475569 !important; }
+        html[data-theme="light"] .text-slate-400 { color: #64748b !important; }
+        html[data-theme="light"] .text-slate-500 { color: #64748b !important; }
+        html[data-theme="light"] .text-slate-600 { color: #64748b !important; }
+        html[data-theme="light"] .hover\:text-red-400:hover { color: #b91c1c !important; }
+
+        /* Акцентные цвета — затемняем для контраста на светлом фоне */
+        html[data-theme="light"] .text-amber-400,
+        html[data-theme="light"] .text-amber-500,
+        html[data-theme="light"] .text-amber-500\/80 { color: #b45309 !important; }
+        html[data-theme="light"] .text-blue-300,
+        html[data-theme="light"] .text-blue-400,
+        html[data-theme="light"] .text-blue-500 { color: #1d4ed8 !important; }
+        html[data-theme="light"] .text-cyan-300,
+        html[data-theme="light"] .text-cyan-400,
+        html[data-theme="light"] .text-cyan-400\/90,
+        html[data-theme="light"] .text-cyan-500 { color: #0e7490 !important; }
+        html[data-theme="light"] .text-emerald-400,
+        html[data-theme="light"] .text-emerald-500 { color: #047857 !important; }
+        html[data-theme="light"] .text-indigo-300 { color: #4338ca !important; }
+        html[data-theme="light"] .text-red-300,
+        html[data-theme="light"] .text-red-400 { color: #b91c1c !important; }
+        html[data-theme="light"] .text-sky-300,
+        html[data-theme="light"] .text-sky-400,
+        html[data-theme="light"] .text-sky-400\/90,
+        html[data-theme="light"] .text-sky-500 { color: #0369a1 !important; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col pb-12">
+
+    <!-- Экран загрузки при первом входе -->
+    <div id="appLoader">
+        <div class="loader-ring"></div>
+        <div class="loader-title">Лётная книжка</div>
+    </div>
+
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 reveal" style="animation-delay: .05s;">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                        Лётная книжка
+                    </h1>
+                    <p class="text-xs text-slate-400">Цифровой учет налета с автоматическим подсчетом</p>
+                </div>
+            </div>
+            
+            <!-- Панель быстрых действий -->
+            <div class="flex items-center gap-2 flex-wrap justify-center">
+                <div class="segmented segmented--theme" style="grid-template-columns: repeat(2, 1fr); width: 92px; height: 34px;" data-segment-group="theme">
+                    <span class="segmented-thumb"></span>
+                    <input type="radio" id="theme-dark" name="theme" value="dark" checked>
+                    <label for="theme-dark" title="Тёмная тема">🌙</label>
+                    <input type="radio" id="theme-light" name="theme" value="light">
+                    <label for="theme-light" title="Светлая тема">☀️</label>
+                </div>
+                <button onclick="exportData()" class="btn-tactile px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700" title="Экспортировать JSON">
+                    Экспорт
+                </button>
+                <button onclick="document.getElementById('importFile').click()" class="btn-tactile px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700" title="Импортировать JSON">
+                    Импорт
+                </button>
+                <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl w-full mx-auto px-3 sm:px-4 mt-4 sm:mt-6 flex-grow flex flex-col gap-4 sm:gap-6">
+
+        <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 reveal" id="statsGrid" style="animation-delay: .12s;">
+            <!-- Суммарный налёт -->
+            <div class="panel bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-4 shadow-md">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Общий налёт (всего)</p>
+                <h3 class="counter font-mono text-2xl font-bold mt-1 text-white" id="statTotalHours">00:00</h3>
+            </div>
+            <!-- Полёты -->
+            <div class="panel bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-4 shadow-md">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Всего полётов</p>
+                <h3 class="counter font-mono text-2xl font-bold mt-1 text-emerald-400" id="statTotalFlights">0</h3>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start reveal" style="animation-delay: .19s;">
+            
+            <!-- Левая колонка: Форма ввода записи -->
+            <div class="panel bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg lg:col-span-1">
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-800 pb-3">
+                    <h2 class="font-semibold text-white">Добавить запись полёта</h2>
+                </div>
+                
+                <form id="flightForm" onsubmit="saveFlight(event)" class="space-y-4">
+                    <!-- Дата и Время суток -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Дата</label>
+                            <input type="date" id="date" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Время суток</label>
+                            <div class="segmented" style="grid-template-columns: repeat(2, 1fr);" data-segment-group="timeOfDay">
+                                <span class="segmented-thumb"></span>
+                                <input type="radio" id="tod-day" name="timeOfDay" value="День" checked>
+                                <label for="tod-day">День</label>
+                                <input type="radio" id="tod-night" name="timeOfDay" value="Ночь">
+                                <label for="tod-night">Ночь</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Упражнение (Тренировочное / Контрольное) -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Упражнение</label>
+                        <div class="segmented" style="grid-template-columns: repeat(2, 1fr); height: 38px;" data-segment-group="exercise">
+                            <span class="segmented-thumb"></span>
+                            <input type="radio" id="ex-training" name="exercise" value="Тренировочное" checked>
+                            <label for="ex-training">Тренировочное</label>
+                            <input type="radio" id="ex-control" name="exercise" value="Контрольное">
+                            <label for="ex-control">Контрольное</label>
+                        </div>
+                    </div>
+
+                    <!-- Количественные показатели -->
+                    <div class="grid grid-cols-3 gap-2 border-t border-slate-800/60 pt-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1" title="Количество полётов">Кол-во пол.</label>
+                            <input type="number" id="flightsCount" min="0" value="1" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 text-center">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1" title="Количество заходов">Заходы</label>
+                            <input type="number" id="approaches" min="0" value="1" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 text-center">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1" title="Количество посадок">Посадки</label>
+                            <input type="number" id="landings" min="0" value="1" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 text-center">
+                        </div>
+                    </div>
+
+                    <!-- Посадки в минимум погоды -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Посадки в минимум погоды</label>
+                        <input type="number" id="minWeatherLandings" min="0" value="0" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1 sm:px-3 sm:py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                    </div>
+
+                    <!-- Раздел налета (Часы и минуты отдельно для точности) -->
+                    <div class="border-t border-slate-800/60 pt-3 space-y-3">
+                        <span class="text-xs font-semibold text-slate-400 tracking-wider block">УЧЕТ НАЛЕТА (ЧЧ : ММ)</span>
+                        
+                        <!-- Общий налёт -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Общий налёт</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="totalH" min="0" placeholder="Ч" class="w-1/2 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:border-blue-500">
+                                <span class="text-slate-600">:</span>
+                                <input type="number" id="totalM" min="0" max="59" placeholder="М" class="w-1/2 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+
+                        <!-- Налет в закрытой кабине -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Налёт в закрытой кабине</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="closedH" min="0" placeholder="Ч" class="w-1/2 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:border-blue-500">
+                                <span class="text-slate-600">:</span>
+                                <input type="number" id="closedM" min="0" max="59" placeholder="М" class="w-1/2 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+
+                        <!-- Налет в СМУ -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Налёт в СМУ</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="smrH" min="0" placeholder="Ч" class="w-1/2 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:border-blue-500">
+                                <span class="text-slate-600">:</span>
+                                <input type="number" id="smrM" min="0" max="59" placeholder="М" class="w-1/2 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+
+                        <!-- Налет в облаках -->
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Налёт в облаках</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="cloudsH" min="0" placeholder="Ч" class="w-1/2 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:border-blue-500">
+                                <span class="text-slate-600">:</span>
+                                <input type="number" id="cloudsM" min="0" max="59" placeholder="М" class="w-1/2 bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white text-center focus:outline-none focus:border-blue-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Кнопка сохранения -->
+                    <button type="submit" class="btn-tactile w-full mt-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium py-2.5 px-4 rounded-lg text-sm shadow-lg shadow-blue-500/20">
+                        Записать полёт
+                    </button>
+                </form>
+            </div>
+
+            <!-- Правая колонка: Журнал полетов -->
+            <div class="panel bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg lg:col-span-2 flex flex-col gap-4 overflow-hidden h-full">
+                
+                <!-- Заголовок и фильтр -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <h2 class="font-semibold text-white">Журнал полётов</h2>
+                    </div>
+                    
+                    <!-- Селектор месяца для автоматического подсчёта -->
+                    <div class="flex items-center gap-2">
+                        <label for="monthFilter" class="text-xs text-slate-400 font-medium">Фильтр по месяцу:</label>
+                        <input type="month" id="monthFilter" onchange="renderTable()" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+
+                <!-- Контейнер для вывода таблицы с горизонтальным скроллом -->
+                <div class="overflow-x-auto custom-scrollbar w-full border border-slate-800 rounded-lg">
+                    <table class="w-full text-left border-collapse whitespace-nowrap min-w-[900px] text-xs sm:text-sm">
+                        <thead>
+                            <tr class="bg-slate-950 text-slate-400 text-xs uppercase font-semibold border-b border-slate-800">
+                                <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">Дата</th>
+                                <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">Время</th>
+                                <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">Упражнение</th>
+                                <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">Кол-во пол.</th>
+                                <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">Общий налёт</th>
+                                <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">В закр. каб.</th>
+                                <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">В СМУ</th>
+                                <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">В облаках</th>
+                                <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">Заходы</th>
+                                <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">Посадки</th>
+                                <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">В минимум</th>
+                                <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center">Действие</th>
+                            </tr>
+                        </thead>
+                        <tbody id="flightTableBody" class="divide-y divide-slate-800/40 text-slate-200">
+                            <!-- Строки таблицы заполняются скриптом -->
+                        </tbody>
+                        
+                        <tfoot class="bg-slate-950/90 text-white font-semibold divide-y divide-slate-800/40 border-t-2 border-slate-800">
+                            <!-- Контрольный день -->
+                            <tr class="bg-slate-950/40 text-slate-300">
+                                <td colspan="3" class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-right text-xs uppercase text-slate-400 border-r border-slate-800/60 font-semibold">Контрольный день:</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-300" id="contDayFlights">0</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-blue-400 font-mono" id="contDayTime">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-400 font-mono" id="contDayClosed">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-sky-400 font-mono" id="contDayImc">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-cyan-400 font-mono" id="contDayClouds">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-400" id="contDayApproaches">0</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-400" id="contDayLandings">0</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-amber-500/80" id="contDayMinWeather">0</td>
+                                <td class="bg-slate-950/20"></td>
+                            </tr>
+                            
+                            <!-- Тренировочный день -->
+                            <tr class="bg-slate-950/40 text-slate-300">
+                                <td colspan="3" class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-right text-xs uppercase text-slate-400 border-r border-slate-800/60 font-semibold">Тренировочный день:</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-300" id="trainDayFlights">0</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-blue-400 font-mono" id="trainDayTime">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-400 font-mono" id="trainDayClosed">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-sky-400 font-mono" id="trainDayImc">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-cyan-400 font-mono" id="trainDayClouds">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-400" id="trainDayApproaches">0</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-400" id="trainDayLandings">0</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-amber-500/80" id="trainDayMinWeather">0</td>
+                                <td class="bg-slate-950/20"></td>
+                            </tr>
+
+                            <!-- Итого день -->
+                            <tr class="bg-slate-900/60 text-white font-bold border-b border-slate-800">
+                                <td colspan="3" class="px-2 py-2 sm:px-3 sm:py-2.5 text-right text-xs uppercase text-slate-300 border-r border-slate-800/60">Итого день:</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-emerald-400" id="totalDayFlights">0</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-blue-300 font-mono" id="totalDayTime">00:00</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-slate-300 font-mono" id="totalDayClosed">00:00</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-sky-300 font-mono" id="totalDayImc">00:00</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-cyan-300 font-mono" id="totalDayClouds">00:00</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-slate-300" id="totalDayApproaches">0</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-slate-300" id="totalDayLandings">0</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-amber-400" id="totalDayMinWeather">0</td>
+                                <td class="bg-slate-950/30"></td>
+                            </tr>
+
+                            <!-- Контрольная ночь -->
+                            <tr class="bg-slate-950/40 text-slate-300">
+                                <td colspan="3" class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-right text-xs uppercase text-slate-400 border-r border-slate-800/60 font-semibold">Контрольная ночь:</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-300" id="contNightFlights">0</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-blue-400 font-mono" id="contNightTime">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-400 font-mono" id="contNightClosed">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-sky-400 font-mono" id="contNightImc">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-cyan-400 font-mono" id="contNightClouds">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-400" id="contNightApproaches">0</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-400" id="contNightLandings">0</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-amber-500/80" id="contNightMinWeather">0</td>
+                                <td class="bg-slate-950/20"></td>
+                            </tr>
+
+                            <!-- Тренировочная ночь -->
+                            <tr class="bg-slate-950/40 text-slate-300">
+                                <td colspan="3" class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-right text-xs uppercase text-slate-400 border-r border-slate-800/60 font-semibold">Тренировочная ночь:</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-300" id="trainNightFlights">0</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-blue-400 font-mono" id="trainNightTime">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-400 font-mono" id="trainNightClosed">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-sky-400 font-mono" id="trainNightImc">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-cyan-400 font-mono" id="trainNightClouds">00:00</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-400" id="trainNightApproaches">0</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-slate-400" id="trainNightLandings">0</td>
+                                <td class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-center border-r border-slate-800/60 text-amber-500/80" id="trainNightMinWeather">0</td>
+                                <td class="bg-slate-950/20"></td>
+                            </tr>
+
+                            <!-- Итого ночь -->
+                            <tr class="bg-slate-900/60 text-white font-bold border-b border-slate-800">
+                                <td colspan="3" class="px-2 py-2 sm:px-3 sm:py-2.5 text-right text-xs uppercase text-slate-300 border-r border-slate-800/60">Итого ночь:</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-emerald-400" id="totalNightFlights">0</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-blue-300 font-mono" id="totalNightTime">00:00</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-slate-300 font-mono" id="totalNightClosed">00:00</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-sky-300 font-mono" id="totalNightImc">00:00</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-cyan-300 font-mono" id="totalNightClouds">00:00</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-slate-300" id="totalNightApproaches">0</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-slate-300" id="totalNightLandings">0</td>
+                                <td class="px-2 py-2 sm:px-3 sm:py-2.5 text-center border-r border-slate-800/60 text-amber-400" id="totalNightMinWeather">0</td>
+                                <td class="bg-slate-950/30"></td>
+                            </tr>
+
+                            <!-- Итого за выбранный месяц -->
+                            <tr class="bg-slate-900 text-white font-bold border-t-2 border-slate-800">
+                                <td colspan="3" class="px-2 py-2.5 sm:px-3 sm:py-3 text-right text-xs uppercase text-slate-300 border-r border-slate-800/60" id="totalMonthLabel">Итого за месяц:</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-emerald-400" id="totalFlightsSum">0</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-blue-400 font-mono" id="totalTimeSum">00:00</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-blue-400 font-mono" id="totalClosedSum">00:00</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-sky-400 font-mono" id="totalImcSum">00:00</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-cyan-400 font-mono" id="totalCloudsSum">00:00</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-slate-300" id="totalApproachesSum">0</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-slate-300" id="totalLandingsSum">0</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-amber-400" id="totalMinWeatherSum">0</td>
+                                <td class="bg-slate-950/30"></td>
+                            </tr>
+                            
+                            <!-- Суммарно за всё время -->
+                            <tr class="bg-slate-950 text-white font-bold border-t border-slate-800/80">
+                                <td colspan="3" class="px-2 py-2.5 sm:px-3 sm:py-3 text-right text-xs uppercase text-slate-300 border-r border-slate-800/60">Суммарно за всё время:</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-emerald-500" id="allFlightsSum">0</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-blue-500 font-mono" id="allTimeSum">00:00</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-blue-500 font-mono" id="allClosedSum">00:00</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-sky-500 font-mono" id="allImcSum">00:00</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-cyan-500 font-mono" id="allCloudsSum">00:00</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-slate-400" id="allApproachesSum">0</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-slate-400" id="allLandingsSum">0</td>
+                                <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 text-amber-500" id="allMinWeatherSum">0</td>
+                                <td class="bg-slate-950"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                <p class="text-xs text-slate-600 flex items-center gap-1.5">
+                    <span>Смахните запись влево, чтобы удалить, или нажмите ✕</span>
+                </p>
+                
+                <!-- Описание пустого состояния -->
+                <div id="emptyState" class="hidden flex flex-col items-center justify-center py-12 text-slate-500">
+                    <p class="text-sm">Нет записей за выбранный месяц</p>
+                    <p class="text-xs text-slate-600 mt-1">Добавьте полёты с помощью формы слева.</p>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 reveal" id="archiveSection" style="animation-delay: .26s;">
+            <!-- Архив по месяцам -->
+            <div class="panel bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg lg:col-span-1">
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-800 pb-3">
+                    <h2 class="font-semibold text-white">Архив по месяцам</h2>
+                </div>
+                <div id="monthArchive" class="flex flex-col gap-2 max-h-[420px] overflow-y-auto custom-scrollbar pr-1">
+                    <!-- Заполняется скриптом -->
+                </div>
+            </div>
+
+            <!-- Графики динамики -->
+            <div class="panel bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg lg:col-span-2">
+                <div class="flex items-center gap-2 mb-4 border-b border-slate-800 pb-3">
+                    <h2 class="font-semibold text-white">Динамика налёта по месяцам</h2>
+                </div>
+                <div class="relative" id="chartWrap" style="height: 340px;">
+                    <canvas id="dynamicsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Кастомные всплывающие сообщения (Toast) -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-emerald-600/95 backdrop-blur text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-500 z-50" style="transition-timing-function: cubic-bezier(.22,1,.36,1);">
+        <span id="toastMessage">Операция выполнена успешно</span>
+    </div>
+
+    <!-- Кастомное модальное окно подтверждения -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 sm:p-6 max-w-sm w-full shadow-2xl">
+            <div class="flex items-center gap-3 text-amber-400 mb-4">
+                <h3 class="text-lg font-bold text-white" id="confirmTitle">Вы уверены?</h3>
+            </div>
+            <p class="text-sm text-slate-300 mb-6" id="confirmMessage">Это действие нельзя отменить.</p>
+            <div class="flex items-center justify-end gap-3">
+                <button id="btnConfirmCancel" class="btn-tactile px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">
+                    Отмена
+                </button>
+                <button id="btnConfirmOk" class="btn-tactile px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold">
+                    Подтвердить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const POTOK_API = 'https://nikita-storage.nikakuznecova24.workers.dev';
+        const POTOK_TOKEN = 'f9MTg7Pa9tjoiTt5htkxzPPf1xgt22aWWs9GzNhAy1Q';
+        window.storage = {
+            async get(key) {
+                try {
+                    const res = await fetch(POTOK_API + '/kv/' + encodeURIComponent(key), {
+                        headers: { 'X-Potok-Token': POTOK_TOKEN }
+                    });
+                    if (res.status === 404) return null;
+                    const d = await res.json();
+                    if (d.value === null || d.value === undefined) return null;
+                    return { key, value: d.value };
+                } catch (e) { console.error('storage.get failed', e); return null; }
+            },
+            async set(key, value) {
+                try {
+                    const res = await fetch(POTOK_API + '/kv/' + encodeURIComponent(key), {
+                        method: 'PUT',
+                        headers: { 'X-Potok-Token': POTOK_TOKEN },
+                        body: value
+                    });
+                    await res.json();
+                } catch (e) { console.error('storage.set failed', e); }
+                return { key, value };
+            }
+        };
+        // Инициализация базы данных
+        let flights = [];
+        let confirmPromiseResolve = null;
+        let dynamicsChartInstance = null;
+        const STORAGE_KEY = 'flightsData';
+        const THEME_KEY = 'themePreference';
+
+        async function loadTheme() {
+            try {
+                const res = await window.storage.get(THEME_KEY, false);
+                return res && res.value ? res.value : 'dark';
+            } catch (e) {
+                return 'dark';
+            }
+        }
+
+        async function saveTheme(theme) {
+            try {
+                await window.storage.set(THEME_KEY, theme, false);
+            } catch (e) {
+                console.error('Storage error', e);
+            }
+        }
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            renderCharts(); // перерисовываем график с цветами под новую тему
+        }
+
+        function initThemeToggle() {
+            document.querySelectorAll('input[name="theme"]').forEach(input => {
+                input.addEventListener('change', async () => {
+                    if (!input.checked) return;
+                    applyTheme(input.value);
+                    await saveTheme(input.value);
+                });
+            });
+        }
+
+        async function loadFlights() {
+            try {
+                const res = await window.storage.get(STORAGE_KEY, false);
+                flights = res && res.value ? JSON.parse(res.value) : [];
+            } catch (e) {
+                flights = [];
+            }
+        }
+
+        async function persistFlights() {
+            try {
+                await window.storage.set(STORAGE_KEY, JSON.stringify(flights), false);
+            } catch (e) {
+                console.error('Storage error', e);
+            }
+        }
+
+        // Инициализация анимированных сегментированных переключателей
+        function initSegmentedControls() {
+            document.querySelectorAll('.segmented').forEach(group => {
+                const inputs = Array.from(group.querySelectorAll('input[type="radio"]'));
+                const labels = Array.from(group.querySelectorAll('label'));
+                const thumb = group.querySelector('.segmented-thumb');
+                const count = inputs.length || 1;
+                thumb.style.width = `calc(${100 / count}% - ${6 * (count - 1) / count}px)`;
+
+                function update() {
+                    const idx = Math.max(0, inputs.findIndex(i => i.checked));
+                    thumb.style.transform = `translateX(${idx * 100}%)`;
+                    labels.forEach((lb, i) => lb.classList.toggle('seg-active', i === idx));
+                    if (group.dataset.segmentGroup === 'exercise') {
+                        thumb.style.background = idx === 1
+                            ? 'linear-gradient(135deg, #dc2626, #b91c1c)'
+                            : 'linear-gradient(135deg, #2563eb, #1d4ed8)';
+                        thumb.style.boxShadow = idx === 1
+                            ? '0 4px 14px -4px rgba(220,38,38,0.6)'
+                            : '0 4px 14px -4px rgba(37,99,235,0.6)';
+                    }
+                }
+
+                inputs.forEach(input => input.addEventListener('change', update));
+                update();
+            });
+        }
+
+        // Навешиваем обработчик при первой загрузке
+        window.onload = async function() {
+            const loadStart = performance.now();
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            
+            document.getElementById('date').value = `${year}-${month}-${day}`;
+            document.getElementById('monthFilter').value = `${year}-${month}`;
+
+            const savedTheme = await loadTheme();
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            const themeInput = document.querySelector(`input[name="theme"][value="${savedTheme}"]`);
+            if (themeInput) themeInput.checked = true;
+
+            initSegmentedControls();
+            initThemeToggle();
+            await loadFlights();
+            renderTable();
+
+            // Экран загрузки держим минимум ~700мс, чтобы анимация не мигала на быстрой связи
+            const MIN_LOADER_TIME = 700;
+            const elapsed = performance.now() - loadStart;
+            const remaining = Math.max(0, MIN_LOADER_TIME - elapsed);
+            const loader = document.getElementById('appLoader');
+            setTimeout(() => {
+                loader.classList.add('loader-hidden');
+                setTimeout(() => loader.remove(), 700);
+            }, remaining);
+        };
+
+        // Вспомогательная функция подтверждения через модальное окно
+        function openConfirmModal(title, msg) {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmMessage').innerText = msg;
+            const modal = document.getElementById('confirmModal');
+            modal.classList.remove('hidden');
+            
+            return new Promise((resolve) => {
+                confirmPromiseResolve = resolve;
+            });
+        }
+
+        document.getElementById('btnConfirmCancel').addEventListener('click', () => {
+            document.getElementById('confirmModal').classList.add('hidden');
+            if (confirmPromiseResolve) {
+                const resolve = confirmPromiseResolve;
+                confirmPromiseResolve = null;
+                resolve(false);
+            }
+        });
+
+        document.getElementById('btnConfirmOk').addEventListener('click', () => {
+            document.getElementById('confirmModal').classList.add('hidden');
+            if (confirmPromiseResolve) {
+                const resolve = confirmPromiseResolve;
+                confirmPromiseResolve = null;
+                resolve(true);
+            }
+        });
+
+        // Безопасный перевод ЧЧ:ММ в минуты
+        function timeToMinutes(h, m) {
+            const hours = Math.max(0, parseInt(h) || 0);
+            const minutes = Math.max(0, parseInt(m) || 0);
+            return hours * 60 + minutes;
+        }
+
+        // Форматирование чисел с разделителем пробелом (например: 1 450)
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+        }
+
+        // Перевод минут в ЧЧ:ММ с красивым разделением тысяч в часах
+        function minutesToHHMM(totalMinutes) {
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            const formattedHours = formatNumber(hours);
+            return `${formattedHours}:${String(minutes).padStart(2, '0')}`;
+        }
+
+        // Плавный анимированный счётчик для ключевых цифр (эффект "работающего прибора")
+        function animateCounter(el, toValue, formatter, duration = 650) {
+            const fromValue = parseFloat(el.dataset.rawValue || '0');
+            if (fromValue === toValue) { el.textContent = formatter(toValue); return; }
+            const startTime = performance.now();
+
+            function tick(now) {
+                const progress = Math.min((now - startTime) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const current = fromValue + (toValue - fromValue) * eased;
+                el.textContent = formatter(current);
+                if (progress < 1) {
+                    requestAnimationFrame(tick);
+                } else {
+                    el.dataset.rawValue = toValue;
+                }
+            }
+            requestAnimationFrame(tick);
+        }
+
+        // Показ информационных уведомлений
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMessage');
+            
+            toastMsg.innerText = message;
+            if (isError) {
+                toast.classList.remove('bg-emerald-600');
+                toast.classList.add('bg-red-600');
+            } else {
+                toast.classList.remove('bg-red-600');
+                toast.classList.add('bg-emerald-600');
+            }
+            
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // Сохранение нового полёта
+        async function saveFlight(event) {
+            event.preventDefault();
+
+            const dateValue = document.getElementById('date').value;
+            const timeOfDay = document.querySelector('input[name="timeOfDay"]:checked').value;
+            const exerciseType = document.querySelector('input[name="exercise"]:checked').value;
+            
+            const flightsCount = Math.max(0, parseInt(document.getElementById('flightsCount').value) || 0);
+            const approaches = Math.max(0, parseInt(document.getElementById('approaches').value) || 0);
+            const landings = Math.max(0, parseInt(document.getElementById('landings').value) || 0);
+            const minWeatherLandings = Math.max(0, parseInt(document.getElementById('minWeatherLandings').value) || 0);
+
+            const totalH = document.getElementById('totalH').value;
+            const totalM = document.getElementById('totalM').value;
+            const closedH = document.getElementById('closedH').value;
+            const closedM = document.getElementById('closedM').value;
+            const smrH = document.getElementById('smrH').value;
+            const smrM = document.getElementById('smrM').value;
+            const cloudsH = document.getElementById('cloudsH').value;
+            const cloudsM = document.getElementById('cloudsM').value;
+
+            const flightRecord = {
+                id: Date.now(),
+                date: dateValue,
+                timeOfDay: timeOfDay,
+                exercise: exerciseType,
+                flightsCount: flightsCount,
+                approaches: approaches,
+                landings: landings,
+                minWeatherLandings: minWeatherLandings,
+                totalMinutes: timeToMinutes(totalH, totalM),
+                closedMinutes: timeToMinutes(closedH, closedM),
+                smrMinutes: timeToMinutes(smrH, smrM),
+                cloudsMinutes: timeToMinutes(cloudsH, cloudsM)
+            };
+
+            // Предотвращение сохранения нулевого налета при наличии количества полетов
+            if (flightRecord.totalMinutes === 0 && flightRecord.flightsCount > 0) {
+                const proceed = await openConfirmModal(
+                    '«Проверка расчетов»', 
+                    '«Вы указали полёты, но общий налёт равен 00:00. Всё верно?»'
+                );
+                if (!proceed) return;
+            }
+
+            flights.push(flightRecord);
+            flights.sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            await persistFlights();
+            
+            // Сброс полей налета
+            document.getElementById('totalH').value = '';
+            document.getElementById('totalM').value = '';
+            document.getElementById('closedH').value = '';
+            document.getElementById('closedM').value = '';
+            document.getElementById('smrH').value = '';
+            document.getElementById('smrM').value = '';
+            document.getElementById('cloudsH').value = '';
+            document.getElementById('cloudsM').value = '';
+            
+            document.getElementById('flightsCount').value = 1;
+            document.getElementById('approaches').value = 1;
+            document.getElementById('landings').value = 1;
+            document.getElementById('minWeatherLandings').value = 0;
+
+            // Переключение фильтра на месяц только что внесенной записи
+            const recordDate = new Date(dateValue);
+            const recordMonth = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('monthFilter').value = recordMonth;
+
+            renderTable();
+            showToast('«Запись полёта успешно добавлена!»');
+        }
+
+        // Удалить запись
+        async function deleteFlight(id) {
+            const proceed = await openConfirmModal('«Удаление записи»', '«Вы действительно хотите стереть эту запись из журнала?»');
+            if (proceed) {
+                flights = flights.filter(f => f.id !== id);
+                await persistFlights();
+                renderTable();
+                showToast('«Запись успешно удалена.»', true);
+            }
+            return proceed;
+        }
+
+        // Собираем суммы по каждому месяцу за всё время (для архива и графиков)
+        function getMonthlyAggregates() {
+            const map = {};
+            flights.forEach(f => {
+                const key = f.date.slice(0, 7);
+                if (!map[key]) {
+                    map[key] = { key, flights: 0, totalMinutes: 0, imcMinutes: 0, cloudsMinutes: 0, landings: 0, approaches: 0 };
+                }
+                map[key].flights += f.flightsCount;
+                map[key].totalMinutes += f.totalMinutes;
+                map[key].imcMinutes += f.smrMinutes;
+                map[key].cloudsMinutes += f.cloudsMinutes;
+                map[key].landings += f.landings;
+                map[key].approaches += f.approaches;
+            });
+            return Object.values(map).sort((a, b) => a.key.localeCompare(b.key));
+        }
+
+        function monthLabelFromKey(key) {
+            const [y, m] = key.split('-');
+            const d = new Date(y, m - 1);
+            return d.toLocaleString('ru-RU', { month: 'short', year: 'numeric' }).replace('.', '');
+        }
+
+        // Карточки архива по месяцам — клик переключает фильтр журнала на этот месяц
+        function renderArchive() {
+            const container = document.getElementById('monthArchive');
+            const aggregates = getMonthlyAggregates().slice().reverse(); // новые месяцы сверху
+
+            if (aggregates.length === 0) {
+                container.innerHTML = `<p class="text-sm text-slate-500 text-center py-8">Архив пуст — как только появятся записи, тут будет история по месяцам.</p>`;
+                return;
+            }
+
+            const selectedMonth = document.getElementById('monthFilter').value;
+            container.innerHTML = aggregates.map(m => {
+                const active = m.key === selectedMonth;
+                const [y, mo] = m.key.split('-');
+                const label = new Date(y, mo - 1).toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
+                return `
+                <button onclick="openArchiveMonth('${m.key}')" class="btn-tactile w-full text-left px-2 py-2 sm:px-3 sm:py-2.5 rounded-lg border transition-colors flex items-center justify-between gap-3 ${active ? 'bg-blue-500/10 border-blue-500/40' : 'bg-slate-950 border-slate-800 hover:border-slate-700'}">
+                    <div>
+                        <p class="text-sm font-medium text-white capitalize">${label}</p>
+                        <p class="text-xs text-slate-500">${formatNumber(m.flights)} полётов · ${formatNumber(m.landings)} посадок</p>
+                    </div>
+                    <span class="font-mono text-sm text-blue-400 whitespace-nowrap">${minutesToHHMM(m.totalMinutes)}</span>
+                </button>`;
+            }).join('');
+        }
+
+        // Открыть месяц из архива — переключить фильтр и прокрутить к журналу
+        function openArchiveMonth(key) {
+            document.getElementById('monthFilter').value = key;
+            renderTable();
+            const table = document.getElementById('flightTableBody').closest('.overflow-x-auto');
+            if (table) table.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Палитра графика в зависимости от текущей темы
+        function getChartTheme() {
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+            return isLight ? {
+                tick: '#64748b',
+                grid: 'rgba(203,213,225,0.6)',
+                legend: '#334155',
+                tooltipBg: '#ffffff',
+                tooltipBorder: '#e2e8f0',
+                tooltipText: '#0f172a',
+                barFill: 'rgba(4,120,87,0.25)',
+                barBorder: 'rgba(4,120,87,0.9)',
+                barTick: '#047857',
+                lineHours: '#1d4ed8',
+                lineHoursFill: 'rgba(29,78,216,0.12)',
+                lineImc: '#0369a1'
+            } : {
+                tick: '#94a3b8',
+                grid: 'rgba(51,65,85,0.4)',
+                legend: '#cbd5e1',
+                tooltipBg: '#0f172a',
+                tooltipBorder: '#334155',
+                tooltipText: '#e2e8f0',
+                barFill: 'rgba(52,211,153,0.35)',
+                barBorder: 'rgba(52,211,153,0.9)',
+                barTick: '#34d399',
+                lineHours: '#60a5fa',
+                lineHoursFill: 'rgba(96,165,250,0.15)',
+                lineImc: '#38bdf8'
+            };
+        }
+
+        // График динамики: налёт (часы) и количество полётов по месяцам
+        function renderCharts() {
+            const canvas = document.getElementById('dynamicsChart');
+            if (!canvas || typeof Chart === 'undefined') return;
+
+            const aggregates = getMonthlyAggregates();
+            const labels = aggregates.map(m => monthLabelFromKey(m.key));
+            const hoursData = aggregates.map(m => +(m.totalMinutes / 60).toFixed(2));
+            const imcHoursData = aggregates.map(m => +(m.imcMinutes / 60).toFixed(2));
+            const flightsData = aggregates.map(m => m.flights);
+            const theme = getChartTheme();
+
+            if (dynamicsChartInstance) {
+                dynamicsChartInstance.destroy();
+            }
+
+            if (aggregates.length === 0) {
+                return;
+            }
+
+            dynamicsChartInstance = new Chart(canvas, {
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: 'Полётов',
+                            data: flightsData,
+                            backgroundColor: theme.barFill,
+                            borderColor: theme.barBorder,
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            yAxisID: 'yFlights',
+                            order: 2
+                        },
+                        {
+                            type: 'line',
+                            label: 'Общий налёт, ч',
+                            data: hoursData,
+                            borderColor: theme.lineHours,
+                            backgroundColor: theme.lineHoursFill,
+                            tension: 0.35,
+                            fill: true,
+                            pointRadius: 3,
+                            pointBackgroundColor: theme.lineHours,
+                            yAxisID: 'yHours',
+                            order: 1
+                        },
+                        {
+                            type: 'line',
+                            label: 'Налёт в СМУ, ч',
+                            data: imcHoursData,
+                            borderColor: theme.lineImc,
+                            borderDash: [5, 4],
+                            tension: 0.35,
+                            fill: false,
+                            pointRadius: 2,
+                            yAxisID: 'yHours',
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: theme.legend,
+                                font: { size: 11 },
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                boxWidth: 8,
+                                boxHeight: 8
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: theme.tooltipBg,
+                            borderColor: theme.tooltipBorder,
+                            borderWidth: 1,
+                            titleColor: theme.tooltipText,
+                            bodyColor: theme.tooltipText
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: theme.tick },
+                            grid: { color: theme.grid }
+                        },
+                        yHours: {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            ticks: { color: theme.lineHours },
+                            grid: { color: theme.grid },
+                            title: { display: true, text: 'Часы', color: theme.lineHours }
+                        },
+                        yFlights: {
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            ticks: { color: theme.barTick, precision: 0 },
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: 'Полётов', color: theme.barTick }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Жест "смахнуть, чтобы удалить" — работает и от касания, и от мыши
+        function attachSwipeToDelete(row, flightId) {
+            const DELETE_THRESHOLD = -70;
+            const MAX_SWIPE = -100;
+            let startX = 0, startY = 0, currentX = 0, dragging = false, decided = null;
+
+            function reset() {
+                row.style.transition = 'transform .25s cubic-bezier(.22,1,.36,1), background-color .25s ease';
+                row.style.transform = 'translateX(0)';
+                row.style.backgroundColor = '';
+            }
+
+            function onStart(x, y) {
+                startX = x; startY = y; currentX = 0; dragging = true; decided = null;
+                row.style.transition = 'none';
+            }
+
+            function onMove(x, y, e) {
+                if (!dragging) return;
+                const dx = x - startX;
+                const dy = y - startY;
+                if (decided === null) {
+                    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                        decided = Math.abs(dx) > Math.abs(dy) * 1.4;
+                    } else {
+                        return;
+                    }
+                }
+                if (!decided) return; // это вертикальная прокрутка — не мешаем ей
+                if (e && e.cancelable) e.preventDefault();
+                currentX = Math.max(MAX_SWIPE, Math.min(0, dx));
+                row.style.transform = `translateX(${currentX}px)`;
+                const progress = Math.min(1, Math.abs(currentX) / Math.abs(MAX_SWIPE));
+                row.style.backgroundColor = `rgba(220, 38, 38, ${(progress * 0.35).toFixed(2)})`;
+            }
+
+            async function onEnd() {
+                if (!dragging) return;
+                dragging = false;
+                if (decided && currentX <= DELETE_THRESHOLD) {
+                    row.style.transition = 'transform .2s ease, opacity .2s ease';
+                    row.style.transform = `translateX(${MAX_SWIPE - 40}px)`;
+                    row.style.opacity = '0.4';
+                    const deleted = await deleteFlight(flightId);
+                    if (!deleted) reset();
+                } else {
+                    reset();
+                }
+            }
+
+            row.addEventListener('touchstart', (e) => {
+                const t = e.touches[0];
+                onStart(t.clientX, t.clientY);
+            }, { passive: true });
+            row.addEventListener('touchmove', (e) => {
+                const t = e.touches[0];
+                onMove(t.clientX, t.clientY, e);
+            }, { passive: false });
+            row.addEventListener('touchend', onEnd);
+            row.addEventListener('touchcancel', () => { dragging = false; reset(); });
+
+            row.addEventListener('mousedown', (e) => {
+                onStart(e.clientX, e.clientY);
+                const onMouseMove = (ev) => onMove(ev.clientX, ev.clientY, ev);
+                const onMouseUp = () => {
+                    onEnd();
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+        }
+
+        // Рендеринг таблицы и автоподсчет сумм
+        function renderTable() {
+            const tableBody = document.getElementById('flightTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const selectedMonth = document.getElementById('monthFilter').value;
+            
+            tableBody.innerHTML = '';
+
+            let monthName = 'выбранный месяц';
+            if (selectedMonth) {
+                const [year, month] = selectedMonth.split('-');
+                const dateObj = new Date(year, month - 1);
+                // Название месяца выводится строчными буквами в полном соответствии с правилами русского языка
+                monthName = dateObj.toLocaleString('ru-RU', { month: 'long', year: 'numeric' }).toLowerCase();
+            }
+            document.getElementById('totalMonthLabel').innerText = `Итого за ${monthName}:`;
+
+            // Фильтруем записи за месяц
+            const filteredFlights = flights.filter(flight => {
+                if (!selectedMonth) return true;
+                return flight.date.startsWith(selectedMonth);
+            });
+
+            // Счетчики за месяц
+            let mFlights = 0, mTotal = 0, mClosed = 0, mSmr = 0, mClouds = 0, mApproaches = 0, mLandings = 0, mMinWeather = 0;
+            // Счетчики за всё время
+            let aFlights = 0, aTotal = 0, aClosed = 0, aSmr = 0, aClouds = 0, aApproaches = 0, aLandings = 0, aMinWeather = 0;
+
+            // Специальные структуры для детальной аналитики за выбранный месяц
+            const cDay = { fl: 0, t: 0, cl: 0, sm: 0, cld: 0, ap: 0, ld: 0, mw: 0 };
+            const tDay = { fl: 0, t: 0, cl: 0, sm: 0, cld: 0, ap: 0, ld: 0, mw: 0 };
+            const cNight = { fl: 0, t: 0, cl: 0, sm: 0, cld: 0, ap: 0, ld: 0, mw: 0 };
+            const tNight = { fl: 0, t: 0, cl: 0, sm: 0, cld: 0, ap: 0, ld: 0, mw: 0 };
+
+            // Сбор общей статистики для виджетов сверху и счета за все время
+            flights.forEach(flight => {
+                aFlights += flight.flightsCount;
+                aTotal += flight.totalMinutes;
+                aClosed += flight.closedMinutes;
+                aSmr += flight.smrMinutes;
+                aClouds += flight.cloudsMinutes;
+                aApproaches += flight.approaches;
+                aLandings += flight.landings;
+                aMinWeather += flight.minWeatherLandings;
+            });
+
+            animateCounter(document.getElementById('statTotalHours'), aTotal, v => minutesToHHMM(v));
+            animateCounter(document.getElementById('statTotalFlights'), aFlights, v => formatNumber(Math.round(v)));
+
+            // Отрисовка отфильтрованных строк
+            if (filteredFlights.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                
+                filteredFlights.forEach(flight => {
+                    mFlights += flight.flightsCount;
+                    mTotal += flight.totalMinutes;
+                    mClosed += flight.closedMinutes;
+                    mSmr += flight.smrMinutes;
+                    mClouds += flight.cloudsMinutes;
+                    mApproaches += flight.approaches;
+                    mLandings += flight.landings;
+                    mMinWeather += flight.minWeatherLandings;
+
+                    // Распределение в структуры сложного налета
+                    if (flight.timeOfDay === 'День') {
+                        if (flight.exercise === 'Контрольное') {
+                            cDay.fl += flight.flightsCount;
+                            cDay.t += flight.totalMinutes;
+                            cDay.cl += flight.closedMinutes;
+                            cDay.sm += flight.smrMinutes;
+                            cDay.cld += flight.cloudsMinutes;
+                            cDay.ap += flight.approaches;
+                            cDay.ld += flight.landings;
+                            cDay.mw += flight.minWeatherLandings;
+                        } else {
+                            tDay.fl += flight.flightsCount;
+                            tDay.t += flight.totalMinutes;
+                            tDay.cl += flight.closedMinutes;
+                            tDay.sm += flight.smrMinutes;
+                            tDay.cld += flight.cloudsMinutes;
+                            tDay.ap += flight.approaches;
+                            tDay.ld += flight.landings;
+                            tDay.mw += flight.minWeatherLandings;
+                        }
+                    } else { // Ночь
+                        if (flight.exercise === 'Контрольное') {
+                            cNight.fl += flight.flightsCount;
+                            cNight.t += flight.totalMinutes;
+                            cNight.cl += flight.closedMinutes;
+                            cNight.sm += flight.smrMinutes;
+                            cNight.cld += flight.cloudsMinutes;
+                            cNight.ap += flight.approaches;
+                            cNight.ld += flight.landings;
+                            cNight.mw += flight.minWeatherLandings;
+                        } else {
+                            tNight.fl += flight.flightsCount;
+                            tNight.t += flight.totalMinutes;
+                            tNight.cl += flight.closedMinutes;
+                            tNight.sm += flight.smrMinutes;
+                            tNight.cld += flight.cloudsMinutes;
+                            tNight.ap += flight.approaches;
+                            tNight.ld += flight.landings;
+                            tNight.mw += flight.minWeatherLandings;
+                        }
+                    }
+
+                    const d = new Date(flight.date);
+                    const formattedDate = d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+                    const row = document.createElement('tr');
+                    row.className = 'row-in swipeable-row hover:bg-slate-800/40 transition-colors border-b border-slate-800/40';
+                    
+                    row.innerHTML = `
+                        <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 font-medium">${formattedDate}</td>
+                        <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${flight.timeOfDay === 'День' ? 'bg-amber-500/10 text-amber-400' : 'bg-indigo-500/15 text-indigo-300'}">
+                                ${flight.timeOfDay}
+                            </span>
+                        </td>
+                        <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">
+                            <span class="px-2 py-0.5 rounded-full text-xs ${flight.exercise === 'Контрольное' ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-slate-800 text-slate-300'}">
+                                ${flight.exercise}
+                            </span>
+                        </td>
+                        <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">${formatNumber(flight.flightsCount)}</td>
+                        <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 font-mono font-medium text-white">${minutesToHHMM(flight.totalMinutes)}</td>
+                        <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 font-mono text-slate-400">${minutesToHHMM(flight.closedMinutes)}</td>
+                        <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 font-mono text-sky-400/90">${minutesToHHMM(flight.smrMinutes)}</td>
+                        <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 font-mono text-cyan-400/90">${minutesToHHMM(flight.cloudsMinutes)}</td>
+                        <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">${formatNumber(flight.approaches)}</td>
+                        <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">${formatNumber(flight.landings)}</td>
+                        <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60 font-medium ${flight.minWeatherLandings > 0 ? 'text-amber-400' : 'text-slate-400'}">${formatNumber(flight.minWeatherLandings)}</td>
+                        <td class="px-2 py-2.5 sm:px-3 sm:py-3 text-center">
+                            <button onclick="deleteFlight(${flight.id})" class="text-slate-500 hover:text-red-400 transition-colors px-2 py-1 text-sm font-bold" title="Удалить">
+                                ✕
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                    attachSwipeToDelete(row, flight.id);
+                });
+            }
+
+            // Вычисляем суммарные показатели «Итого день» и «Итого ночь»
+            const totalDay = {
+                fl: cDay.fl + tDay.fl,
+                t: cDay.t + tDay.t,
+                cl: cDay.cl + tDay.cl,
+                sm: cDay.sm + tDay.sm,
+                cld: cDay.cld + tDay.cld,
+                ap: cDay.ap + tDay.ap,
+                ld: cDay.ld + tDay.ld,
+                mw: cDay.mw + tDay.mw
+            };
+
+            const totalNight = {
+                fl: cNight.fl + tNight.fl,
+                t: cNight.t + tNight.t,
+                cl: cNight.cl + tNight.cl,
+                sm: cNight.sm + tNight.sm,
+                cld: cNight.cld + tNight.cld,
+                ap: cNight.ap + tNight.ap,
+                ld: cNight.ld + tNight.ld,
+                mw: cNight.mw + tNight.mw
+            };
+
+            // Функция для красивого вывода одной детальной строчки в tfoot
+            function fillRowDOM(prefix, data) {
+                document.getElementById(`${prefix}Flights`).innerText = formatNumber(data.fl);
+                document.getElementById(`${prefix}Time`).innerText = minutesToHHMM(data.t);
+                document.getElementById(`${prefix}Closed`).innerText = minutesToHHMM(data.cl);
+                document.getElementById(`${prefix}Imc`).innerText = minutesToHHMM(data.sm);
+                document.getElementById(`${prefix}Clouds`).innerText = minutesToHHMM(data.cld);
+                document.getElementById(`${prefix}Approaches`).innerText = formatNumber(data.ap);
+                document.getElementById(`${prefix}Landings`).innerText = formatNumber(data.ld);
+                document.getElementById(`${prefix}MinWeather`).innerText = formatNumber(data.mw);
+            }
+
+            // Наполняем все расчетные графы в подвале таблицы
+            fillRowDOM('contDay', cDay);
+            fillRowDOM('trainDay', tDay);
+            fillRowDOM('totalDay', totalDay);
+            fillRowDOM('contNight', cNight);
+            fillRowDOM('trainNight', tNight);
+            fillRowDOM('totalNight', totalNight);
+
+            // Вывод итогов за выбранный месяц
+            document.getElementById('totalFlightsSum').innerText = formatNumber(mFlights);
+            document.getElementById('totalTimeSum').innerText = minutesToHHMM(mTotal);
+            document.getElementById('totalClosedSum').innerText = minutesToHHMM(mClosed);
+            document.getElementById('totalImcSum').innerText = minutesToHHMM(mSmr);
+            document.getElementById('totalCloudsSum').innerText = minutesToHHMM(mClouds);
+            document.getElementById('totalApproachesSum').innerText = formatNumber(mApproaches);
+            document.getElementById('totalLandingsSum').innerText = formatNumber(mLandings);
+            document.getElementById('totalMinWeatherSum').innerText = formatNumber(mMinWeather);
+
+            // Вывод итогов за все время
+            document.getElementById('allFlightsSum').innerText = formatNumber(aFlights);
+            document.getElementById('allTimeSum').innerText = minutesToHHMM(aTotal);
+            document.getElementById('allClosedSum').innerText = minutesToHHMM(aClosed);
+            document.getElementById('allImcSum').innerText = minutesToHHMM(aSmr);
+            document.getElementById('allCloudsSum').innerText = minutesToHHMM(aClouds);
+            document.getElementById('allApproachesSum').innerText = formatNumber(aApproaches);
+            document.getElementById('allLandingsSum').innerText = formatNumber(aLandings);
+            document.getElementById('allMinWeatherSum').innerText = formatNumber(aMinWeather);
+
+            // Обновляем архив по месяцам и график динамики
+            renderArchive();
+            renderCharts();
+        }
+
+        // Экспорт журнала в файл JSON
+        function exportData() {
+            if (flights.length === 0) {
+                showToast('«Нет записей для экспорта»', true);
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(flights, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `pilot_logbook_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast('«Резервная копия успешно экспортирована!»');
+        }
+
+        // Импорт журнала из файла JSON
+        function importData(event) {
+            const input = event.target;
+            const reader = new FileReader();
+            
+            reader.onload = async function() {
+                try {
+                    const parsedData = JSON.parse(reader.result);
+                    if (Array.isArray(parsedData)) {
+                        flights = parsedData;
+                        await persistFlights();
+                        renderTable();
+                        showToast('«Данные успешно импортированы!»');
+                    } else {
+                        showToast('«Ошибка: Некорректный формат файла.»', true);
+                    }
+                } catch (e) {
+                    showToast('«Не удалось загрузить данные из файла.»', true);
+                }
+                input.value = ''; // Сбрасываем значение поля, чтобы можно было загрузить файл повторно
+            };
+            
+            if (input.files[0]) {
+                reader.readAsText(input.files[0]);
+            } else {
+                input.value = '';
+            }
+        }
+
+        // Полная очистка журнала
+        async function clearAllData() {
+            const proceed = await openConfirmModal(
+                '«Полная очистка»', 
+                '«Вы уверены, что хотите безвозвратно удалить абсолютно все записи из вашей летной книжки?»'
+            );
+            if (proceed) {
+                flights = [];
+                await persistFlights();
+                renderTable();
+                showToast('«Журнал полностью очищен.»', true);
+            }
+        }
+        // Офлайн-кэширование: приложение и внешние ресурсы (Tailwind, шрифты, Chart.js)
+        // кэшируются после первого успешного открытия через Service Worker.
+        // Если браузер/окружение не поддерживает Service Worker (например, локальный
+        // файл file:// или закрытая песочница) — просто тихо пропускаем, на онлайн-работу
+        // приложения это никак не влияет.
+        (function setupOfflineCaching() {
+            if (!('serviceWorker' in navigator)) return;
+
+            const swSource = `
+                const CACHE_NAME = 'logbook-cache-v1';
+                const ASSET_URLS = [
+                    self.registration.scope,
+                    'https://cdn.tailwindcss.com',
+                    'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap',
+                    'https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.0/chart.umd.min.js'
+                ];
+
+                self.addEventListener('install', (event) => {
+                    event.waitUntil(
+                        caches.open(CACHE_NAME).then((cache) => {
+                            return Promise.all(ASSET_URLS.map((url) =>
+                                cache.add(url).catch(() => {})
+                            ));
+                        }).then(() => self.skipWaiting())
+                    );
+                });
+
+                self.addEventListener('activate', (event) => {
+                    event.waitUntil(
+                        caches.keys().then((keys) =>
+                            Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+                        ).then(() => self.clients.claim())
+                    );
+                });
+
+                self.addEventListener('fetch', (event) => {
+                    if (event.request.method !== 'GET') return;
+                    event.respondWith(
+                        caches.match(event.request).then((cached) => {
+                            const network = fetch(event.request).then((response) => {
+                                if (response && response.status === 200) {
+                                    const clone = response.clone();
+                                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                                }
+                                return response;
+                            }).catch(() => cached);
+                            return cached || network;
+                        })
+                    );
+                });
+            `;
+
+            try {
+                const blob = new Blob([swSource], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(swUrl).catch((err) => {
+                    console.warn('Офлайн-кэш недоступен в этом окружении:', err.message);
+                });
+            } catch (e) {
+                console.warn('Офлайн-кэш недоступен в этом окружении:', e.message);
+            }
+        })();
+    </script>
+</body>
+</html>
