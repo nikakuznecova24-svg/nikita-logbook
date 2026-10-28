@@ -9,9 +9,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Штурман">
     <meta name="theme-color" content="#3C78BE">
-    <!-- Подключаем Tailwind CSS для современного дизайна -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Подключаем Tailwind CSS для современного дизайна (самостоятельно размещён — чтобы страница открывалась и без интернета) -->
+    <script src="./tailwind.js"></script>
+    <link href="./fonts.css" rel="stylesheet">
     <!-- Chart.js для графиков динамики налёта -->
     <script src="./chart.min.js"></script>
     
@@ -1030,6 +1030,7 @@
             const day = String(today.getDate()).padStart(2, '0');
             
             document.getElementById('date').value = `${year}-${month}-${day}`;
+            document.getElementById('date').max = `${year}-${month}-${day}`;
             populateMonthYearSelects();
             setMonthFilter(`${year}-${month}`);
 
@@ -1150,6 +1151,15 @@
             event.preventDefault();
 
             const dateValue = document.getElementById('date').value;
+            if (!dateValue) {
+                showToast('«Укажите дату полёта»', true);
+                return;
+            }
+            const todayStr = new Date().toISOString().slice(0, 10);
+            if (dateValue > todayStr) {
+                showToast('«Дата полёта не может быть в будущем»', true);
+                return;
+            }
             const timeOfDay = document.querySelector('input[name="timeOfDay"]:checked').value;
             const exerciseType = document.querySelector('input[name="exercise"]:checked').value;
             
