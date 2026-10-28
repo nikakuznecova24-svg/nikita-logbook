@@ -1862,86 +1862,22 @@
                 showToast('«Журнал полностью очищен.»', true);
             }
         }
-        // Офлайн-кэширование: приложение и внешние ресурсы (Tailwind, шрифты, Chart.js)
-        // кэшируются после первого успешного открытия через Service Worker.
-        // Если браузер/окружение не поддерживает Service Worker (например, локальный
-        // файл file:// или закрытая песочница) — просто тихо пропускаем, на онлайн-работу
-        // приложения это никак не влияет.
-        (function setupOfflineCaching() {
+        // Раньше здесь регистрировался Service Worker, кэширующий всю страницу
+        // "сеть-то-кэш" — из-за него правки после деплоя иногда требовали 2-3
+        // обновлений страницы, прежде чем новая версия долетала до экрана.
+        // Офлайн-работа с данными не зависит от него (см. window.storage выше —
+        // localStorage + очередь догрузки), поэтому сам SW убран целиком, а тут
+        // на всякий случай тихо снимаем регистрацию и чистим его кэш на
+        // устройствах, где он уже был установлен раньше.
+        (function removeStaleServiceWorker() {
             if (!('serviceWorker' in navigator)) return;
-
-            const swSource = `
-                const CACHE_NAME = 'logbook-cache-v2';
-                const ASSET_URLS = [
-                    self.registration.scope,
-                    'https://cdn.tailwindcss.com',
-                    'https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap',
-                    'https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.0/chart.umd.min.js'
-                ];
-
-                self.addEventListener('install', (event) => {
-                    event.waitUntil(
-                        caches.open(CACHE_NAME).then((cache) => {
-                            return Promise.all(ASSET_URLS.map((url) =>
-                                cache.add(url).catch(() => {})
-                            ));
-                        }).then(() => self.skipWaiting())
-                    );
-                });
-
-                self.addEventListener('activate', (event) => {
-                    event.waitUntil(
-                        caches.keys().then((keys) =>
-                            Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-                        ).then(() => self.clients.claim())
-                    );
-                });
-
-                self.addEventListener('fetch', (event) => {
-                    if (event.request.method !== 'GET') return;
-
-                    // Саму страницу всегда берём сначала из сети, чтобы правки были
-                    // видны сразу после деплоя — кэш тут только запасной вариант на
-                    // случай отсутствия интернета, а не основной источник.
-                    const isAppShell = event.request.mode === 'navigate' || event.request.url === self.registration.scope;
-                    if (isAppShell) {
-                        event.respondWith(
-                            fetch(event.request).then((response) => {
-                                if (response && response.status === 200) {
-                                    const clone = response.clone();
-                                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-                                }
-                                return response;
-                            }).catch(() => caches.match(event.request))
-                        );
-                        return;
-                    }
-
-                    // Внешние библиотеки (Tailwind/шрифты/Chart.js) меняются редко —
-                    // для них кэш-сначала-с-фоновым-обновлением оправдан.
-                    event.respondWith(
-                        caches.match(event.request).then((cached) => {
-                            const network = fetch(event.request).then((response) => {
-                                if (response && response.status === 200) {
-                                    const clone = response.clone();
-                                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-                                }
-                                return response;
-                            }).catch(() => cached);
-                            return cached || network;
-                        })
-                    );
-                });
-            `;
-
-            try {
-                const blob = new Blob([swSource], { type: 'application/javascript' });
-                const swUrl = URL.createObjectURL(blob);
-                navigator.serviceWorker.register(swUrl).catch((err) => {
-                    console.warn('Офлайн-кэш недоступен в этом окружении:', err.message);
-                });
-            } catch (e) {
-                console.warn('Офлайн-кэш недоступен в этом окружении:', e.message);
+            navigator.serviceWorker.getRegistrations().then((regs) => {
+                regs.forEach((reg) => reg.unregister());
+            }).catch(() => {});
+            if ('caches' in window) {
+                caches.keys().then((keys) => {
+                    keys.forEach((key) => { if (key.startsWith('logbook-cache')) caches.delete(key); });
+                }).catch(() => {});
             }
         })();
     </script>
