@@ -457,8 +457,10 @@
                     
                     <!-- Селектор месяца для автоматического подсчёта -->
                     <div class="flex items-center gap-2">
-                        <label for="monthFilter" class="text-xs text-slate-400 font-medium">Фильтр по месяцу:</label>
-                        <input type="month" id="monthFilter" onchange="renderTable()" class="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <label for="monthSelect" class="text-xs text-slate-400 font-medium">Фильтр по месяцу:</label>
+                        <select id="monthSelect" onchange="onMonthFilterPartChange()" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"></select>
+                        <select id="yearSelect" onchange="onMonthFilterPartChange()" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"></select>
+                        <input type="hidden" id="monthFilter">
                     </div>
                 </div>
 
@@ -829,6 +831,46 @@
             });
         }
 
+        // Фильтр по месяцу — два обычных select вместо <input type="month">,
+        // потому что Safari не поддерживает нативный пикер для type="month"
+        // и просто показывает пустое текстовое поле без календаря.
+        const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+        function populateMonthYearSelects() {
+            const monthSelect = document.getElementById('monthSelect');
+            const yearSelect = document.getElementById('yearSelect');
+            if (monthSelect.options.length === 0) {
+                monthSelect.innerHTML = MONTH_NAMES.map((name, i) =>
+                    `<option value="${String(i + 1).padStart(2, '0')}">${name}</option>`
+                ).join('');
+            }
+            if (yearSelect.options.length === 0) {
+                const currentYear = new Date().getFullYear();
+                const years = [];
+                for (let y = currentYear + 1; y >= currentYear - 10; y--) years.push(y);
+                yearSelect.innerHTML = years.map((y) => `<option value="${y}">${y}</option>`).join('');
+            }
+        }
+
+        function setMonthFilter(value) {
+            const [year, month] = value.split('-');
+            populateMonthYearSelects();
+            const yearSelect = document.getElementById('yearSelect');
+            if (year && ![...yearSelect.options].some((o) => o.value === year)) {
+                yearSelect.insertAdjacentHTML('afterbegin', `<option value="${year}">${year}</option>`);
+            }
+            document.getElementById('monthSelect').value = month;
+            yearSelect.value = year;
+            document.getElementById('monthFilter').value = value;
+        }
+
+        function onMonthFilterPartChange() {
+            const month = document.getElementById('monthSelect').value;
+            const year = document.getElementById('yearSelect').value;
+            document.getElementById('monthFilter').value = `${year}-${month}`;
+            renderTable();
+        }
+
         // Навешиваем обработчик при первой загрузке
         window.onload = async function() {
             const loadStart = performance.now();
@@ -838,7 +880,8 @@
             const day = String(today.getDate()).padStart(2, '0');
             
             document.getElementById('date').value = `${year}-${month}-${day}`;
-            document.getElementById('monthFilter').value = `${year}-${month}`;
+            populateMonthYearSelects();
+            setMonthFilter(`${year}-${month}`);
 
             const savedTheme = await loadTheme();
             document.documentElement.setAttribute('data-theme', savedTheme);
@@ -1021,7 +1064,7 @@
             // Переключение фильтра на месяц только что внесенной записи
             const recordDate = new Date(dateValue);
             const recordMonth = `${recordDate.getFullYear()}-${String(recordDate.getMonth() + 1).padStart(2, '0')}`;
-            document.getElementById('monthFilter').value = recordMonth;
+            setMonthFilter(recordMonth);
 
             renderTable();
             showToast('«Запись полёта успешно добавлена!»');
@@ -1091,7 +1134,7 @@
 
         // Открыть месяц из архива — переключить фильтр и прокрутить к журналу
         function openArchiveMonth(key) {
-            document.getElementById('monthFilter').value = key;
+            setMonthFilter(key);
             renderTable();
             const table = document.getElementById('flightTableBody').closest('.overflow-x-auto');
             if (table) table.scrollIntoView({ behavior: 'smooth', block: 'center' });
