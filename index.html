@@ -292,35 +292,21 @@
     </div>
 
     <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 reveal" style="animation-delay: .05s;">
-        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-                <div>
-                    <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                        Лётная книжка самого лучшего штурмана в мире
-                    </h1>
-                    <p class="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
-                        <span>Цифровой учет налета с автоматическим подсчетом</span>
-                        <span id="connBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"></span>
-                    </p>
-                </div>
-            </div>
-            
-            <!-- Панель быстрых действий -->
-            <div class="flex items-center gap-2 flex-wrap justify-center">
-                <div class="segmented segmented--theme" style="grid-template-columns: repeat(2, 1fr); width: 92px; height: 34px;" data-segment-group="theme">
-                    <span class="segmented-thumb"></span>
-                    <input type="radio" id="theme-dark" name="theme" value="dark" checked>
-                    <label for="theme-dark" title="Тёмная тема">🌙</label>
-                    <input type="radio" id="theme-light" name="theme" value="light">
-                    <label for="theme-light" title="Светлая тема">☀️</label>
-                </div>
-                <button onclick="exportData()" class="btn-tactile px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700" title="Экспортировать JSON">
-                    Экспорт
-                </button>
-                <button onclick="document.getElementById('importFile').click()" class="btn-tactile px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700" title="Импортировать JSON">
-                    Импорт
-                </button>
-                <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col items-center gap-2 text-center">
+            <span style="width:36px;height:36px;border-radius:11px;" class="bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-lg">✈</span>
+            <h1 class="text-xl font-bold tracking-tight text-white">
+                Лётная книжка самого лучшего штурмана в мире
+            </h1>
+            <p class="text-xs text-slate-400 flex items-center justify-center gap-2 flex-wrap">
+                <span>Цифровой учет налета с автоматическим подсчетом</span>
+                <span id="connBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"></span>
+            </p>
+            <div class="segmented segmented--theme mt-1" style="grid-template-columns: repeat(2, 1fr); width: 92px; height: 34px;" data-segment-group="theme">
+                <span class="segmented-thumb"></span>
+                <input type="radio" id="theme-dark" name="theme" value="dark" checked>
+                <label for="theme-dark" title="Тёмная тема">🌙</label>
+                <input type="radio" id="theme-light" name="theme" value="light">
+                <label for="theme-light" title="Светлая тема">☀️</label>
             </div>
         </div>
     </header>
@@ -687,6 +673,17 @@
                     <canvas id="dynamicsChart"></canvas>
                 </div>
             </div>
+        </div>
+
+        <!-- Данные: экспорт/импорт — внизу страницы, не в шапке -->
+        <div class="flex items-center justify-center gap-2 pb-4 pt-2">
+            <button onclick="exportData()" class="btn-tactile px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700" title="Экспортировать JSON">
+                Экспорт
+            </button>
+            <button onclick="document.getElementById('importFile').click()" class="btn-tactile px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700" title="Импортировать JSON">
+                Импорт
+            </button>
+            <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
         </div>
     </main>
 
@@ -1394,8 +1391,6 @@
             const aggregates = getMonthlyAggregates();
             const labels = aggregates.map(m => monthLabelFromKey(m.key));
             const hoursData = aggregates.map(m => +(m.totalMinutes / 60).toFixed(2));
-            const imcHoursData = aggregates.map(m => +(m.imcMinutes / 60).toFixed(2));
-            const flightsData = aggregates.map(m => m.flights);
             const theme = getChartTheme();
 
             if (dynamicsChartInstance) {
@@ -1406,46 +1401,24 @@
                 return;
             }
 
+            // Упрощённый график — только налёт в часах по месяцам (без столбиков
+            // "полётов" и отдельной линии СМУ: эти цифры и так видны в развёрнутых
+            // итогах журнала).
             dynamicsChartInstance = new Chart(canvas, {
-                type: 'bar',
+                type: 'line',
                 data: {
                     labels,
                     datasets: [
                         {
-                            type: 'bar',
-                            label: 'Полётов',
-                            data: flightsData,
-                            backgroundColor: theme.barFill,
-                            borderColor: theme.barBorder,
-                            borderWidth: 1,
-                            borderRadius: 4,
-                            yAxisID: 'yFlights',
-                            order: 2
-                        },
-                        {
-                            type: 'line',
-                            label: 'Общий налёт, ч',
+                            label: 'Налёт, ч',
                             data: hoursData,
                             borderColor: theme.lineHours,
                             backgroundColor: theme.lineHoursFill,
                             tension: 0.35,
                             fill: true,
-                            pointRadius: 3,
-                            pointBackgroundColor: theme.lineHours,
-                            yAxisID: 'yHours',
-                            order: 1
-                        },
-                        {
-                            type: 'line',
-                            label: 'Налёт в СМУ, ч',
-                            data: imcHoursData,
-                            borderColor: theme.lineImc,
-                            borderDash: [5, 4],
-                            tension: 0.35,
-                            fill: false,
-                            pointRadius: 2,
-                            yAxisID: 'yHours',
-                            order: 1
+                            borderWidth: 3,
+                            pointRadius: 4,
+                            pointBackgroundColor: theme.lineHours
                         }
                     ]
                 },
@@ -1454,22 +1427,16 @@
                     maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
-                        legend: {
-                            labels: {
-                                color: theme.legend,
-                                font: { size: 11 },
-                                usePointStyle: true,
-                                pointStyle: 'circle',
-                                boxWidth: 8,
-                                boxHeight: 8
-                            }
-                        },
+                        legend: { display: false },
                         tooltip: {
                             backgroundColor: theme.tooltipBg,
                             borderColor: theme.tooltipBorder,
                             borderWidth: 1,
                             titleColor: theme.tooltipText,
-                            bodyColor: theme.tooltipText
+                            bodyColor: theme.tooltipText,
+                            callbacks: {
+                                label: (ctx) => minutesToHHMM(Math.round(ctx.parsed.y * 60))
+                            }
                         }
                     },
                     scales: {
@@ -1477,21 +1444,11 @@
                             ticks: { color: theme.tick },
                             grid: { color: theme.grid }
                         },
-                        yHours: {
-                            type: 'linear',
-                            position: 'left',
+                        y: {
                             beginAtZero: true,
                             ticks: { color: theme.lineHours },
                             grid: { color: theme.grid },
                             title: { display: true, text: 'Часы', color: theme.lineHours }
-                        },
-                        yFlights: {
-                            type: 'linear',
-                            position: 'right',
-                            beginAtZero: true,
-                            ticks: { color: theme.barTick, precision: 0 },
-                            grid: { drawOnChartArea: false },
-                            title: { display: true, text: 'Полётов', color: theme.barTick }
                         }
                     }
                 }
