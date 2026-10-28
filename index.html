@@ -162,6 +162,9 @@
             text-transform: uppercase;
             font-size: 12.5px;
             color: #94a3b8;
+            text-align: center;
+            max-width: 280px;
+            padding: 0 16px;
             opacity: 0;
             animation: loaderFadeIn .8s ease .3s forwards;
         }
@@ -182,6 +185,7 @@
 
         /* ================= МОБИЛЬНАЯ АДАПТАЦИЯ ================= */
         @media (max-width: 640px) {
+            header.sticky { position: static !important; }
             #chartWrap { height: 240px !important; }
             #toast {
                 left: 12px !important;
@@ -1867,7 +1871,7 @@
             if (!('serviceWorker' in navigator)) return;
 
             const swSource = `
-                const CACHE_NAME = 'logbook-cache-v1';
+                const CACHE_NAME = 'logbook-cache-v2';
                 const ASSET_URLS = [
                     self.registration.scope,
                     'https://cdn.tailwindcss.com',
@@ -1895,6 +1899,26 @@
 
                 self.addEventListener('fetch', (event) => {
                     if (event.request.method !== 'GET') return;
+
+                    // Саму страницу всегда берём сначала из сети, чтобы правки были
+                    // видны сразу после деплоя — кэш тут только запасной вариант на
+                    // случай отсутствия интернета, а не основной источник.
+                    const isAppShell = event.request.mode === 'navigate' || event.request.url === self.registration.scope;
+                    if (isAppShell) {
+                        event.respondWith(
+                            fetch(event.request).then((response) => {
+                                if (response && response.status === 200) {
+                                    const clone = response.clone();
+                                    caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+                                }
+                                return response;
+                            }).catch(() => caches.match(event.request))
+                        );
+                        return;
+                    }
+
+                    // Внешние библиотеки (Tailwind/шрифты/Chart.js) меняются редко —
+                    // для них кэш-сначала-с-фоновым-обновлением оправдан.
                     event.respondWith(
                         caches.match(event.request).then((cached) => {
                             const network = fetch(event.request).then((response) => {
