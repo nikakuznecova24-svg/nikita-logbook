@@ -334,19 +334,19 @@
                 <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Налёт за месяц</p>
                 <h3 class="counter font-mono text-2xl font-bold mt-1 text-white" id="statMonthHours">00:00</h3>
             </div>
-            <!-- Общий налёт за всё время (редактируемый остаток + журнал) -->
-            <button type="button" onclick="editBaselineHours()" class="panel text-left bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-4 shadow-md hover:border-blue-500/50 transition-colors" title="Нажми, чтобы указать налёт до этого приложения">
-                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Общий налёт за всё время ✎</p>
+            <!-- Общий налёт за всё время -->
+            <div class="panel bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-4 shadow-md">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Общий налёт за всё время</p>
                 <h3 class="counter font-mono text-2xl font-bold mt-1 text-white" id="statTotalHours">00:00</h3>
-            </button>
-            <!-- Полёты (редактируемый остаток + журнал) -->
-            <button type="button" onclick="editBaselineFlights()" class="panel text-left bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-4 shadow-md hover:border-blue-500/50 transition-colors" title="Нажми, чтобы указать число полётов до этого приложения">
-                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Всего полётов ✎</p>
+            </div>
+            <!-- Полёты -->
+            <div class="panel bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 rounded-xl p-4 shadow-md">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Всего полётов</p>
                 <h3 class="counter font-mono text-2xl font-bold mt-1 text-emerald-400" id="statTotalFlights">0</h3>
-            </button>
+            </div>
         </section>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start reveal" style="animation-delay: .19s;">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:items-stretch reveal" style="animation-delay: .19s;">
             
             <!-- Левая колонка: Форма ввода записи -->
             <div class="panel bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg lg:col-span-1">
@@ -473,24 +473,43 @@
                         <h2 class="font-semibold text-white">Журнал полётов</h2>
                     </div>
                     
-                    <!-- Селектор месяца для автоматического подсчёта -->
-                    <div class="flex items-center gap-2">
-                        <label for="monthSelect" class="text-xs text-slate-400 font-medium">Фильтр по месяцу:</label>
-                        <select id="monthSelect" onchange="onMonthFilterPartChange()" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"></select>
-                        <select id="yearSelect" onchange="onMonthFilterPartChange()" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"></select>
+                    <!-- Селектор месяца для автоматического подсчёта (кастомный дропдаун в стиле сервиса) -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-xs text-slate-400 font-medium">Фильтр по месяцу:</span>
+                        <div class="custom-select relative">
+                            <select id="monthSelect" onchange="onMonthFilterPartChange()" class="hidden"></select>
+                            <button type="button" class="custom-select-btn flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-white hover:border-blue-500/50 transition-colors" onclick="toggleCustomSelect(this)">
+                                <span class="custom-select-label">—</span>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                        </div>
+                        <div class="custom-select relative">
+                            <select id="yearSelect" onchange="onMonthFilterPartChange()" class="hidden"></select>
+                            <button type="button" class="custom-select-btn flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-white hover:border-blue-500/50 transition-colors" onclick="toggleCustomSelect(this)">
+                                <span class="custom-select-label">—</span>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                        </div>
                         <input type="hidden" id="monthFilter">
-                        <select id="exerciseFilter" onchange="renderTable()" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500">
-                            <option value="">Все упражнения</option>
-                            <option value="Тренировочное">Тренировочное</option>
-                            <option value="Контрольное">Контрольное</option>
-                        </select>
+                        <div class="custom-select relative">
+                            <select id="exerciseFilter" onchange="renderTable()" class="hidden">
+                                <option value="">Все упражнения</option>
+                                <option value="Тренировочное">Тренировочное</option>
+                                <option value="Контрольное">Контрольное</option>
+                            </select>
+                            <button type="button" class="custom-select-btn flex items-center gap-1.5 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-sm text-white hover:border-blue-500/50 transition-colors" onclick="toggleCustomSelect(this)">
+                                <span class="custom-select-label">—</span>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Контейнер для вывода таблицы с горизонтальным скроллом -->
-                <div class="overflow-x-auto custom-scrollbar w-full border border-slate-800 rounded-lg">
+                <!-- Контейнер для вывода таблицы — ограничен по высоте (как у формы слева),
+                     прокручивается и по горизонтали, и по вертикали -->
+                <div class="overflow-auto custom-scrollbar w-full border border-slate-800 rounded-lg flex-1 min-h-0">
                     <table class="w-full text-left border-collapse whitespace-nowrap min-w-[900px] text-xs sm:text-sm">
-                        <thead>
+                        <thead class="sticky top-0 z-10">
                             <tr class="bg-slate-950 text-slate-400 text-xs uppercase font-semibold border-b border-slate-800">
                                 <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">Дата</th>
                                 <th class="px-2 py-2.5 sm:px-3 sm:py-3 text-center border-r border-slate-800/60">Время</th>
@@ -510,7 +529,7 @@
                             <!-- Строки таблицы заполняются скриптом -->
                         </tbody>
                         
-                        <tfoot class="bg-slate-950/90 text-white font-semibold divide-y divide-slate-800/40 border-t-2 border-slate-800">
+                        <tfoot id="journalDetails" class="hidden bg-slate-950/90 text-white font-semibold divide-y divide-slate-800/40 border-t-2 border-slate-800">
                             <!-- Контрольный день -->
                             <tr class="bg-slate-950/40 text-slate-300">
                                 <td colspan="3" class="px-2.5 py-1.5 sm:px-3 sm:py-2 text-right text-xs uppercase text-slate-400 border-r border-slate-800/60 font-semibold">Контрольный день:</td>
@@ -625,10 +644,16 @@
                         </tfoot>
                     </table>
                 </div>
-                <p class="text-xs text-slate-600 flex items-center gap-1.5">
-                    <span>Смахните запись влево, чтобы удалить, или нажмите ✕</span>
-                </p>
-                
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <p class="text-xs text-slate-600 flex items-center gap-1.5">
+                        <span>Смахните запись влево, чтобы удалить, или нажмите ✕</span>
+                    </p>
+                    <button type="button" id="detailsToggleBtn" onclick="toggleJournalDetails()" class="btn-tactile inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700">
+                        <span id="detailsToggleLabel">Развернуть итоги</span>
+                        <svg id="detailsToggleIcon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                </div>
+
                 <!-- Описание пустого состояния -->
                 <div id="emptyState" class="hidden flex flex-col items-center justify-center py-12 text-slate-500">
                     <p class="text-sm">Нет записей за выбранный месяц</p>
@@ -798,8 +823,6 @@
         let dynamicsChartInstance = null;
         const STORAGE_KEY = 'flightsData';
         const THEME_KEY = 'themePreference';
-        const BASELINE_KEY = 'baselineStats';
-        let baseline = { totalMinutes: 0, flightsCount: 0 };
 
         async function loadTheme() {
             try {
@@ -850,57 +873,6 @@
             }
         }
 
-        // «Остаток» — налёт и число полётов до начала использования приложения.
-        // Никита летает много лет, вбивать всю старую историю вручную он не будет,
-        // поэтому эти два числа хранятся отдельно и просто прибавляются к тому,
-        // что реально посчитано по записям в журнале.
-        async function loadBaseline() {
-            try {
-                const res = await window.storage.get(BASELINE_KEY, false);
-                baseline = res && res.value ? JSON.parse(res.value) : { totalMinutes: 0, flightsCount: 0 };
-            } catch (e) {
-                baseline = { totalMinutes: 0, flightsCount: 0 };
-            }
-        }
-
-        async function persistBaseline() {
-            try {
-                await window.storage.set(BASELINE_KEY, JSON.stringify(baseline), false);
-            } catch (e) {
-                console.error('Storage error', e);
-            }
-        }
-
-        async function editBaselineHours() {
-            const h = Math.floor(baseline.totalMinutes / 60);
-            const m = baseline.totalMinutes % 60;
-            const input = prompt('Налёт до этого приложения (чч:мм). Эта цифра прибавится к общему налёту за всё время:', `${h}:${String(m).padStart(2, '0')}`);
-            if (input === null) return;
-            const match = input.trim().match(/^(\d+):(\d{1,2})$/);
-            if (!match) {
-                showToast('«Формат: часы:минуты, например 1200:30»', true);
-                return;
-            }
-            baseline.totalMinutes = parseInt(match[1]) * 60 + Math.min(59, parseInt(match[2]));
-            await persistBaseline();
-            renderTable();
-            showToast('«Остаток налёта обновлён»');
-        }
-
-        async function editBaselineFlights() {
-            const input = prompt('Количество полётов до этого приложения. Прибавится к общему счётчику полётов:', String(baseline.flightsCount));
-            if (input === null) return;
-            const value = parseInt(input.trim());
-            if (isNaN(value) || value < 0) {
-                showToast('«Введите целое число»', true);
-                return;
-            }
-            baseline.flightsCount = value;
-            await persistBaseline();
-            renderTable();
-            showToast('«Остаток полётов обновлён»');
-        }
-
         // Инициализация анимированных сегментированных переключателей
         function initSegmentedControls() {
             document.querySelectorAll('.segmented').forEach(group => {
@@ -927,6 +899,82 @@
                 inputs.forEach(input => input.addEventListener('change', update));
                 update();
             });
+        }
+
+        // Кастомный дропдаун поверх обычного <select> — нативный список открытия
+        // выглядит как голая системная менюшка (особенно в Safari) и не похож на
+        // остальной интерфейс. Сам <select> остаётся в DOM скрытым и держит
+        // реальное значение (весь остальной код продолжает читать .value как раньше),
+        // а открывающийся список рисуем сами и позиционируем fixed, чтобы не резалось
+        // overflow родительской панели.
+        let openCustomSelectMenu = null;
+
+        function closeCustomSelect() {
+            if (openCustomSelectMenu) {
+                openCustomSelectMenu.remove();
+                openCustomSelectMenu = null;
+            }
+            document.removeEventListener('scroll', closeCustomSelect, true);
+            window.removeEventListener('resize', closeCustomSelect);
+        }
+
+        function toggleCustomSelect(btn) {
+            const wasOpen = !!openCustomSelectMenu;
+            closeCustomSelect();
+            if (wasOpen) return;
+
+            const wrap = btn.closest('.custom-select');
+            const selectEl = wrap.querySelector('select');
+            const rect = btn.getBoundingClientRect();
+
+            const menu = document.createElement('div');
+            menu.className = 'fixed z-50 bg-slate-900 border border-slate-800 rounded-lg shadow-2xl py-1 max-h-60 overflow-y-auto custom-scrollbar';
+            menu.style.top = `${rect.bottom + 4}px`;
+            menu.style.left = `${rect.left}px`;
+            menu.style.minWidth = `${rect.width}px`;
+
+            Array.from(selectEl.options).forEach(opt => {
+                const item = document.createElement('div');
+                item.textContent = opt.textContent;
+                item.className = 'px-3 py-2 text-sm cursor-pointer whitespace-nowrap ' +
+                    (opt.value === selectEl.value
+                        ? 'text-blue-400 font-semibold bg-slate-800/60'
+                        : 'text-slate-300 hover:bg-slate-800/40');
+                item.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectEl.value = opt.value;
+                    selectEl.dispatchEvent(new Event('change'));
+                    closeCustomSelect();
+                });
+                menu.appendChild(item);
+            });
+
+            document.body.appendChild(menu);
+            openCustomSelectMenu = menu;
+            setTimeout(() => {
+                document.addEventListener('click', onDocClickCloseCustomSelect, true);
+                document.addEventListener('scroll', closeCustomSelect, true);
+                window.addEventListener('resize', closeCustomSelect);
+            }, 0);
+        }
+
+        function onDocClickCloseCustomSelect(e) {
+            if (openCustomSelectMenu && !openCustomSelectMenu.contains(e.target)) {
+                closeCustomSelect();
+                document.removeEventListener('click', onDocClickCloseCustomSelect, true);
+            }
+        }
+
+        function refreshCustomSelectLabel(selectEl) {
+            const wrap = selectEl.closest('.custom-select');
+            if (!wrap) return;
+            const label = wrap.querySelector('.custom-select-label');
+            const opt = selectEl.options[selectEl.selectedIndex];
+            if (label) label.textContent = opt ? opt.textContent : '—';
+        }
+
+        function syncCustomSelectLabels() {
+            document.querySelectorAll('.custom-select select').forEach(refreshCustomSelectLabel);
         }
 
         // Фильтр по месяцу — два обычных select вместо <input type="month">,
@@ -989,7 +1037,6 @@
             initSegmentedControls();
             initThemeToggle();
             await loadFlights();
-            await loadBaseline();
             renderTable();
 
             // Экран загрузки держим минимум ~700мс, чтобы анимация не мигала на быстрой связи
@@ -1286,8 +1333,21 @@
         function openArchiveMonth(key) {
             setMonthFilter(key);
             renderTable();
-            const table = document.getElementById('flightTableBody').closest('.overflow-x-auto');
+            const table = document.getElementById('flightTableBody').closest('.overflow-auto');
             if (table) table.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Показать/скрыть подробную разбивку (день/ночь, тренировочное/контрольное,
+        // итоги за месяц и за всё время) под журналом — по умолчанию свёрнуто,
+        // чтобы журнал по высоте не раздувался сильно больше формы слева.
+        function toggleJournalDetails() {
+            const details = document.getElementById('journalDetails');
+            const label = document.getElementById('detailsToggleLabel');
+            const icon = document.getElementById('detailsToggleIcon');
+            const isHidden = details.classList.contains('hidden');
+            details.classList.toggle('hidden');
+            label.textContent = isHidden ? 'Свернуть итоги' : 'Развернуть итоги';
+            icon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
         }
 
         // Палитра графика в зависимости от текущей темы
@@ -1343,6 +1403,7 @@
             }
 
             dynamicsChartInstance = new Chart(canvas, {
+                type: 'bar',
                 data: {
                     labels,
                     datasets: [
@@ -1509,10 +1570,11 @@
 
         // Рендеринг таблицы и автоподсчет сумм
         function renderTable() {
+            syncCustomSelectLabels();
             const tableBody = document.getElementById('flightTableBody');
             const emptyState = document.getElementById('emptyState');
             const selectedMonth = document.getElementById('monthFilter').value;
-            
+
             tableBody.innerHTML = '';
 
             let monthName = 'выбранный месяц';
@@ -1563,8 +1625,8 @@
 
             animateCounter(document.getElementById('statYearHours'), yearTotal, v => minutesToHHMM(v));
             animateCounter(document.getElementById('statMonthHours'), monthTotal, v => minutesToHHMM(v));
-            animateCounter(document.getElementById('statTotalHours'), baseline.totalMinutes + aTotal, v => minutesToHHMM(v));
-            animateCounter(document.getElementById('statTotalFlights'), baseline.flightsCount + aFlights, v => formatNumber(Math.round(v)));
+            animateCounter(document.getElementById('statTotalHours'), aTotal, v => minutesToHHMM(v));
+            animateCounter(document.getElementById('statTotalFlights'), aFlights, v => formatNumber(Math.round(v)));
 
             // Отрисовка отфильтрованных строк
             if (filteredFlights.length === 0) {
