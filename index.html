@@ -336,7 +336,7 @@
             </div>
         </section>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:items-stretch reveal" style="animation-delay: .19s;">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start reveal" style="animation-delay: .19s;">
             
             <!-- Левая колонка: Форма ввода записи -->
             <div class="panel bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg lg:col-span-1">
@@ -455,7 +455,7 @@
             </div>
 
             <!-- Правая колонка: Журнал полетов -->
-            <div class="panel bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg lg:col-span-2 flex flex-col gap-4 overflow-hidden h-full">
+            <div class="panel bg-slate-900 border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg lg:col-span-2 flex flex-col gap-4 overflow-hidden">
                 
                 <!-- Заголовок и фильтр -->
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
@@ -497,7 +497,7 @@
 
                 <!-- Контейнер для вывода таблицы — ограничен по высоте (как у формы слева),
                      прокручивается и по горизонтали, и по вертикали -->
-                <div class="overflow-auto custom-scrollbar w-full border border-slate-800 rounded-lg flex-1 min-h-0">
+                <div class="overflow-auto custom-scrollbar w-full border border-slate-800 rounded-lg" style="max-height: 520px;">
                     <table class="w-full text-left border-collapse whitespace-nowrap min-w-[900px] text-xs sm:text-sm">
                         <thead class="sticky top-0 z-10">
                             <tr class="bg-slate-950 text-slate-400 text-xs uppercase font-semibold border-b border-slate-800">
