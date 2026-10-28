@@ -277,24 +277,6 @@
         html[data-theme="light"] .text-sky-400,
         html[data-theme="light"] .text-sky-400\/90,
         html[data-theme="light"] .text-sky-500 { color: #0369a1 !important; }
-
-        /* Печать / PDF — показываем только printArea, остальной интерфейс прячем */
-        #printArea { display: none; }
-        @media print {
-            body > *:not(#printArea) { display: none !important; }
-            #printArea {
-                display: block !important;
-                color: #000;
-                background: #fff;
-                font-family: Arial, Helvetica, sans-serif;
-                padding: 16px;
-            }
-            #printArea h1 { font-size: 18px; margin: 0 0 4px; }
-            #printArea p { font-size: 11px; color: #444; margin: 0 0 16px; }
-            #printArea table { width: 100%; border-collapse: collapse; font-size: 10px; }
-            #printArea th, #printArea td { border: 1px solid #999; padding: 4px 6px; text-align: center; }
-            #printArea tfoot td { font-weight: bold; background: #f0f0f0; }
-        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col pb-12">
@@ -333,9 +315,6 @@
                 </button>
                 <button onclick="document.getElementById('importFile').click()" class="btn-tactile px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700" title="Импортировать JSON">
                     Импорт
-                </button>
-                <button onclick="printLogbook()" class="btn-tactile px-2.5 py-1 sm:px-3 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700" title="Печать или сохранение в PDF">
-                    Печать / PDF
                 </button>
                 <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
             </div>
@@ -681,25 +660,6 @@
             </div>
         </div>
     </main>
-
-    <!-- Печатная версия журнала — наполняется в printLogbook(), видна только в @media print -->
-    <div id="printArea">
-        <h1>Лётная книжка самого лучшего штурмана в мире</h1>
-        <p id="printMeta"></p>
-        <table>
-            <thead>
-                <tr>
-                    <th>Дата</th><th>Время</th><th>Упражнение</th><th>Кол-во пол.</th>
-                    <th>Общий налёт</th><th>В закр. каб.</th><th>В СМУ</th><th>В облаках</th>
-                    <th>Заходы</th><th>Посадки</th><th>Посадки в мин.</th>
-                </tr>
-            </thead>
-            <tbody id="printTableBody"></tbody>
-            <tfoot>
-                <tr id="printTotalsRow"></tr>
-            </tfoot>
-        </table>
-    </div>
 
     <!-- Кастомные всплывающие сообщения (Toast) -->
     <div id="toast" class="fixed bottom-5 right-5 bg-emerald-600/95 backdrop-blur text-white px-5 py-3 rounded-full shadow-2xl flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-500 z-50" style="transition-timing-function: cubic-bezier(.22,1,.36,1);">
@@ -1787,44 +1747,6 @@
             downloadAnchor.click();
             downloadAnchor.remove();
             showToast('«Резервная копия успешно экспортирована!»');
-        }
-
-        // Печать / сохранение в PDF — заполняет скрытую печатную таблицу всей
-        // историей полётов (в хронологическом порядке) и открывает системный
-        // диалог печати; «Сохранить как PDF» там — стандартная опция браузера.
-        function printLogbook() {
-            if (flights.length === 0) {
-                showToast('«Нет записей для печати»', true);
-                return;
-            }
-            const sorted = [...flights].sort((a, b) => new Date(a.date) - new Date(b.date));
-            let totals = { fl: 0, t: 0, cl: 0, sm: 0, cld: 0, ap: 0, ld: 0, mw: 0 };
-
-            document.getElementById('printTableBody').innerHTML = sorted.map(f => {
-                totals.fl += f.flightsCount; totals.t += f.totalMinutes; totals.cl += f.closedMinutes;
-                totals.sm += f.smrMinutes; totals.cld += f.cloudsMinutes; totals.ap += f.approaches;
-                totals.ld += f.landings; totals.mw += f.minWeatherLandings;
-                const d = new Date(f.date);
-                const formattedDate = d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                return `<tr>
-                    <td>${formattedDate}</td><td>${f.timeOfDay}</td><td>${f.exercise}</td><td>${f.flightsCount}</td>
-                    <td>${minutesToHHMM(f.totalMinutes)}</td><td>${minutesToHHMM(f.closedMinutes)}</td>
-                    <td>${minutesToHHMM(f.smrMinutes)}</td><td>${minutesToHHMM(f.cloudsMinutes)}</td>
-                    <td>${f.approaches}</td><td>${f.landings}</td><td>${f.minWeatherLandings}</td>
-                </tr>`;
-            }).join('');
-
-            document.getElementById('printTotalsRow').innerHTML = `
-                <td colspan="3">Итого (${sorted.length} записей, с учётом остатка — ${minutesToHHMM(baseline.totalMinutes + totals.t)})</td>
-                <td>${totals.fl}</td><td>${minutesToHHMM(totals.t)}</td><td>${minutesToHHMM(totals.cl)}</td>
-                <td>${minutesToHHMM(totals.sm)}</td><td>${minutesToHHMM(totals.cld)}</td>
-                <td>${totals.ap}</td><td>${totals.ld}</td><td>${totals.mw}</td>
-            `;
-
-            document.getElementById('printMeta').innerText =
-                `Сформировано ${new Date().toLocaleDateString('ru-RU')} · всего записей в журнале: ${sorted.length}`;
-
-            window.print();
         }
 
         // Импорт журнала из файла JSON
