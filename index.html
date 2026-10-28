@@ -352,11 +352,11 @@
                 <form id="flightForm" onsubmit="saveFlight(event)" class="space-y-4">
                     <!-- Дата и Время суток -->
                     <div id="dateTimeRow" style="display: flex;">
-                        <div style="width: calc(50% - 10px); margin-right: 20px; box-sizing: border-box; flex-shrink: 0;">
+                        <div style="width: 150px; margin-right: 20px; box-sizing: border-box; flex-shrink: 0;">
                             <label class="block text-xs font-medium text-slate-400 mb-1">Дата</label>
                             <input type="date" id="date" required class="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-2 text-sm text-white focus:outline-none focus:border-blue-500">
                         </div>
-                        <div style="width: calc(50% - 10px); box-sizing: border-box; flex-shrink: 0;">
+                        <div style="flex: 1; min-width: 0; box-sizing: border-box;">
                             <label class="block text-xs font-medium text-slate-400 mb-1">Время суток</label>
                             <div class="segmented" style="grid-template-columns: repeat(2, 1fr);" data-segment-group="timeOfDay">
                                 <span class="segmented-thumb"></span>
